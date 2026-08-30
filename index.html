@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即時分數排行榜</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+        input { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        button { padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        button:hover { background-color: #218838; }
+        .leaderboard { width: 100%; border-collapse: collapse; }
+        .leaderboard th, .leaderboard td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .leaderboard th { background-color: #f8f9fa; color: #555; }
+        .rank-1 { color: #d4af37; font-weight: bold; }
+        .rank-2 { color: #aaa9ad; font-weight: bold; }
+        .rank-3 { color: #b08d57; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏆 分數排行榜</h1>
+    
+    <div class="input-group">
+        <input type="text" id="username" placeholder="請輸入名字" maxlength="15">
+        <input type="number" id="score" placeholder="請輸入分數">
+        <button onclick="submitScore()">提交分數</button>
+    </div>
+
+    <table class="leaderboard">
+        <thead>
+            <tr>
+                <th>名次</th>
+                <th>玩家</th>
+                <th>分數</th>
+            </tr>
+        </thead>
+        <tbody id="leaderboard-body">
+            <!-- 動態生成排行榜數據 -->
+        </tbody>
+    </table>
+</div>
+
+<!-- 修正後的 SDK 引進寫法 -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } 
+    from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBCDpMQPzq25-q8wuhZ8QZuFlALkSTJl7s",
+        authDomain: "rank-5c4bf.firebaseapp.com",
+        databaseURL: "https://rank-5c4bf-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "rank-5c4bf",
+        storageBucket: "rank-5c4bf.firebasestorage.app",
+        messagingSenderId: "337282360146",
+        appId: "1:337282360146:web:f149cc268a2633a378508b",
+        measurementId: "G-MN6DLNKPL2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const scoresRef = collection(db, "leaderboard");
+
+    // 提交分數至資料庫
+    window.submitScore = async function() {
+        const nameInput = document.getElementById("username");
+        const scoreInput = document.getElementById("score");
+        
+        const name = nameInput.value.trim();
+        const score = Number(scoreInput.value);
+
+        if (!name || isNaN(score)) {
+            alert("請填寫完整的名字與分數！");
+            return;
+        }
+
+        try {
+            await addDoc(scoresRef, {
+                name: name,
+                score: score,
+                createdAt: serverTimestamp()
+            });
+            nameInput.value = "";
+            scoreInput.value = "";
+        } catch (error) {
+            console.error("提交失敗：", error);
+            alert("提交失敗，請檢查 Firestore 安全規則設定！");
+        }
+    };
+
+    // 即時監聽資料庫變化並更新排行榜前 10 名
+    const q = query(scoresRef, orderBy("score", "desc"), limit(10));
+    onSnapshot(q, (snapshot) => {
+        const tbody = document.getElementById("leaderboard-body");
+        tbody.innerHTML = "";
+        
+        let rank = 1;
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const tr = document.createElement("tr");
+            
+            let rankClass = "";
+            if (rank === 1) rankClass = "rank-1";
+            else if (rank === 2) rankClass = "rank-2";
+            else if (rank === 3) rankClass = "rank-3";
+
+            tr.innerHTML = `
+                <td class="${rankClass}">#${rank}</td>
+                <td>${escapeHtml(data.name)}</td>
+                <td>${data.score}</td>
+            `;
+            tbody.appendChild(tr);
+            rank++;
+        });
+    });
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+</script>
+
+</body>
+</html>
