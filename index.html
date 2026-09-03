@@ -95,7 +95,7 @@
     };
 
     // 即時監聽資料庫變化並更新排行榜前 10 名
-    const q = query(scoresRef, orderBy("score", "desc"), limit(10));
+    const q = query(scoresRef, orderBy("score", "desc"), limit(100));
     onSnapshot(q, (snapshot) => {
         const tbody = document.getElementById("leaderboard-body");
         tbody.innerHTML = "";
